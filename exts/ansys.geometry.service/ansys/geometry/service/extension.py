@@ -35,9 +35,7 @@ if os.environ.get("ANSYS_PYPI_REINSTALL", "") == "1":
         ]
     )
 
-    logging.warning(
-        "ansys.geometry.server - Forced reinstall ansys-pyensight-core"
-    )
+    logging.warning("ansys.geometry.server - Forced reinstall ansys-pyensight-core")
     omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args)
 
 try:
@@ -69,9 +67,7 @@ for name in ["ansys", "pyensight", "core", "exts"]:
 # if the order of the names in correct and there is no -1 in the offsets, we found it
 if (sorted(offsets) == offsets) and (sorted(offsets)[0] != -1):
     # name of 'ansys/pyensight/core' directory. We need three levels above.
-    name = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(kit_dir)))
-    )
+    name = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(kit_dir))))
     sys.path.insert(0, name)
     logging.info(f"Using ansys.pyensight.core from: {name}")
 
@@ -87,9 +83,7 @@ _ = reload(ansys.pyensight.core.utils)
 _ = reload(ansys.pyensight.core.utils.dsg_server)
 _ = reload(ansys.pyensight.core.utils.omniverse_dsg_server)
 
-logging.warning(
-    f"Using ansys.pyensight.core from: {ansys.pyensight.core.__file__}"
-)
+logging.warning(f"Using ansys.pyensight.core from: {ansys.pyensight.core.__file__}")
 
 
 def find_kit_filename() -> Optional[str]:
@@ -116,9 +110,7 @@ def find_kit_filename() -> Optional[str]:
         import pip._vendor.tomli as tomllib
 
     homedir = os.path.expanduser("~")
-    ov_config = os.path.join(
-        homedir, ".nvidia-omniverse", "config", "omniverse.toml"
-    )
+    ov_config = os.path.join(homedir, ".nvidia-omniverse", "config", "omniverse.toml")
     with open(ov_config, "r") as ov_file:
         ov_data = ov_file.read()
     config = tomllib.loads(ov_data)
@@ -155,9 +147,7 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         self._logger = logging.getLogger(ext_name)
         self._dsg_uri = self._setting("dsgUrl", "ENSIGHT_GRPC_URI")
         self._omni_uri = self._setting("omniUrl", "ENSIGHT_OMNI_URI")
-        self._security_token = self._setting(
-            "securityCode", "ENSIGHT_SECURITY_TOKEN"
-        )
+        self._security_token = self._setting("securityCode", "ENSIGHT_SECURITY_TOKEN")
         self._temporal = self._setting("temporal") != "0"
         self._vrmode = self._setting("vrmode") != "0"
         try:
@@ -343,13 +333,9 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         self.warning("  --/exts/ansys.geometry.service/omniUrl=URL")
         self.warning(f"    Omniverse pathname.  (default: {self.omni_uri})")
         self.warning("  --/exts/ansys.geometry.service/dsgUrl=URL")
-        self.warning(
-            f"    Dynamic Scene Graph connection URL.  (default: {self.dsg_uri})"
-        )
+        self.warning(f"    Dynamic Scene Graph connection URL.  (default: {self.dsg_uri})")
         self.warning("  --/exts/ansys.geometry.service/securityCode=TOKEN")
-        self.warning(
-            f"    Dynamic Scene Graph security token.  (default: {self.security_token})"
-        )
+        self.warning(f"    Dynamic Scene Graph security token.  (default: {self.security_token})")
         self.warning("  --/exts/ansys.geometry.service/temporal=0|1")
         self.warning(
             f"    If non-zero, include all timeseteps in the scene.  (default: {self.temporal})"
@@ -389,9 +375,7 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         try:
             self._shutdown = True
             if self._server_process:
-                for child in psutil.Process(self._server_process.pid).children(
-                    recursive=True
-                ):
+                for child in psutil.Process(self._server_process.pid).children(recursive=True):
                     child.kill()
                 self._server_process.kill()
         except psutil.NoSuchProcess:
@@ -419,9 +403,7 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         cmd.extend(["--ext-folder", kit_dir])
         cmd.extend(["--enable", "ansys.geometry.service"])
         if self.security_token:
-            cmd.append(
-                f'--/exts/ansys.geometry.service/securityCode="{self.security_token}"'
-            )
+            cmd.append(f'--/exts/ansys.geometry.service/securityCode="{self.security_token}"')
         if self.temporal:
             cmd.append("--/exts/ansys.geometry.service/temporal=1")
         if self.vrmode:
@@ -429,9 +411,7 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         if self.normalize_geometry:
             cmd.append("--/exts/ansys.geometry.service/normalizeGeometry=1")
         if self.time_scale != 1.0:
-            cmd.append(
-                f"--/exts/ansys.geometry.service/timeScale={self.time_scale}"
-            )
+            cmd.append(f"--/exts/ansys.geometry.service/timeScale={self.time_scale}")
         cmd.append(f"--/exts/ansys.geometry.service/omniUrl={self.omni_uri}")
         cmd.append(f"--/exts/ansys.geometry.service/dsgUrl={self.dsg_uri}")
         cmd.append("--/exts/ansys.geometry.service/run=1")
@@ -441,12 +421,8 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         # (1) the name of the "server status" file, if any
         self._new_status_file()
         env_vars["ANSYS_OV_SERVER_STATUS_FILENAME"] = self._status_filename
-        working_dir = os.path.join(
-            os.path.dirname(ansys.pyensight.core.__file__), "utils"
-        )
-        self._server_process = subprocess.Popen(
-            cmd, close_fds=True, env=env_vars, cwd=working_dir
-        )
+        working_dir = os.path.join(os.path.dirname(ansys.pyensight.core.__file__), "utils")
+        self._server_process = subprocess.Popen(cmd, close_fds=True, env=env_vars, cwd=working_dir)
 
     def _new_status_file(self, new=True) -> None:
         """
@@ -461,9 +437,7 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
             try:
                 os.remove(self._status_filename)
             except OSError:
-                self.warning(
-                    f"Unable to delete the status file: {self._status_filename}"
-                )
+                self.warning(f"Unable to delete the status file: {self._status_filename}")
         self._status_filename = ""
         if new:
             self._status_filename = os.path.join(
@@ -499,9 +473,7 @@ class AnsysGeometryServiceServerExtension(omni.ext.IExt):
         """
 
         # Build the Omniverse connection
-        omni_link = ov_dsg_server.OmniverseWrapper(
-            path=self._omni_uri, verbose=1
-        )
+        omni_link = ov_dsg_server.OmniverseWrapper(path=self._omni_uri, verbose=1)
         self.info("Omniverse connection established.")
 
         # parse the DSG USI

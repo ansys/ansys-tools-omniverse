@@ -7,7 +7,6 @@ import shutil
 import setuptools
 import setuptools.command.build_py
 from setuptools.command.build_py import build_py as build_py_orig
-from setuptools.command.egg_info import egg_info as egg_info_orig
 import setuptools.command.sdist
 
 # Get the long description from the README file
@@ -28,9 +27,7 @@ description = f"An extension to send data to Omniverse using Ansys EnSight, buil
 class CustomBuildPy(build_py_orig):
     def run(self):
         # Copy the exts folder to the desired package location
-        target_dir = os.path.join(
-            self.build_lib, "ansys", "tools", "omniverse", "exts"
-        )
+        target_dir = os.path.join(self.build_lib, "ansys", "tools", "omniverse", "exts")
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
         for item in os.listdir("exts"):
@@ -63,9 +60,7 @@ if __name__ == "__main__":
         python_requires=">=3.9",
         install_requires=["ansys-pyensight-core==0.8.8"],
         package_dir={"": "src"},
-        packages=setuptools.find_namespace_packages(
-            "src", include=("ansys.*",)
-        ),
+        packages=setuptools.find_namespace_packages("src", include=("ansys.*",)),
         cmdclass={"build_py": CustomBuildPy},
         include_package_data=True,
     )
