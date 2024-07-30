@@ -3,13 +3,13 @@ requires = ["setuptools >= 42.0.0", "wheel"]
 build-backend = "setuptools.build_meta:__legacy__"
 
 [tool.black]
-line-length = 100
+line-length = 80
 src_paths = ["doc", "exts"]
 
 [tool.codespell]
 ignore-words-list = "ro, te, pres"
 quiet-level = 3
-skip = "*.pyc,*.xml,*.gif,*.png,*.jpg,*.js,*.html,*.svg,tests/ensigth_api_test_assets.txt"
+skip = "*.pyc,*.xml,*.gif,*.png,*.jpg,*.js,*.html,*.svg"
 
 [tool.isort]
 profile = "black"
@@ -25,15 +25,6 @@ level = "HIGH"
 number = "3"
 recursive = true
 exclude = ["venv/*", "tests/*"]
-
-[tool.mypy]
-python_version = 3.9
-strict = false
-namespace_packages = true
-explicit_package_bases = true
-exclude = ["tests/", "^doc", "exts/"]
-no_site_packages = true
-follow_imports = "skip"
 
 [pydocstyle]
 convention = "numpy"

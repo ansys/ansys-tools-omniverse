@@ -29,7 +29,9 @@ class AnsysGeometryServiceUIExtension(omni.ext.IExt):
 
     @property
     def service(self) -> Optional["AnsysGeometryServiceUIExtension"]:
-        return ansys.geometry.service.AnsysGeometryServiceServerExtension.get_instance()
+        return (
+            ansys.geometry.service.AnsysGeometryServiceServerExtension.get_instance()
+        )
 
     def info(self, text: str) -> None:
         self._logger.info(text)
@@ -133,7 +135,9 @@ class AnsysGeometryServiceUIExtension(omni.ext.IExt):
         else:
             self._connect_w.text = "Connect to DSG Server"
             self._label_w.text = "No connected DSG server"
-        self._update_w.enabled = self._connected and (status.get("status", "idle") == "idle")
+        self._update_w.enabled = self._connected and (
+            status.get("status", "idle") == "idle"
+        )
         self._connect_w.enabled = status.get("status", "idle") == "idle"
         self._temporal_w.enabled = True
         self._vrmode_w.enabled = not self._connected
@@ -144,23 +148,39 @@ class AnsysGeometryServiceUIExtension(omni.ext.IExt):
         self._omni_uri_w.enabled = not self._connected
 
     def build_ui(self) -> None:
-        self._window = ui.Window(f"ANSYS Geometry Service ({self.service.pyensight_version})")
+        self._window = ui.Window(
+            f"ANSYS Geometry Service ({self.service.pyensight_version})"
+        )
         with self._window.frame:
             with ui.VStack(height=0, spacing=5):
                 self._label_w = ui.Label("No connected DSG server")
 
                 with ui.HStack(spacing=5):
-                    ui.Label("DSG Service URI:", alignment=ui.Alignment.RIGHT_CENTER, width=0)
+                    ui.Label(
+                        "DSG Service URI:",
+                        alignment=ui.Alignment.RIGHT_CENTER,
+                        width=0,
+                    )
                     self._dsg_uri_w = ui.StringField()
                     self._dsg_uri_w.model.as_string = self.service.dsg_uri
 
                 with ui.HStack(spacing=5):
-                    ui.Label("DSG security code:", alignment=ui.Alignment.RIGHT_CENTER, width=0)
+                    ui.Label(
+                        "DSG security code:",
+                        alignment=ui.Alignment.RIGHT_CENTER,
+                        width=0,
+                    )
                     self._dsg_token_w = ui.StringField(password_mode=True)
-                    self._dsg_token_w.model.as_string = self.service.security_token
+                    self._dsg_token_w.model.as_string = (
+                        self.service.security_token
+                    )
 
                 with ui.HStack(spacing=5):
-                    ui.Label("Omniverse URI:", alignment=ui.Alignment.RIGHT_CENTER, width=0)
+                    ui.Label(
+                        "Omniverse URI:",
+                        alignment=ui.Alignment.RIGHT_CENTER,
+                        width=0,
+                    )
                     self._omni_uri_w = ui.StringField()
                     self._omni_uri_w.model.as_string = self.service.omni_uri
 
@@ -177,19 +197,29 @@ class AnsysGeometryServiceUIExtension(omni.ext.IExt):
 
                     with ui.HStack(spacing=5):
                         self._normalize_w = ui.CheckBox(width=0)
-                        self._normalize_w.model.set_value(self.service.normalize_geometry)
-                        ui.Label("Normalize", alignment=ui.Alignment.LEFT_CENTER)
+                        self._normalize_w.model.set_value(
+                            self.service.normalize_geometry
+                        )
+                        ui.Label(
+                            "Normalize", alignment=ui.Alignment.LEFT_CENTER
+                        )
 
                 with ui.HStack(spacing=5):
                     ui.Label(
-                        "Temporal scaling factor:", alignment=ui.Alignment.RIGHT_CENTER, width=0
+                        "Temporal scaling factor:",
+                        alignment=ui.Alignment.RIGHT_CENTER,
+                        width=0,
                     )
                     self._time_scale_w = ui.FloatField()
                     self._time_scale_w.model.as_float = self.service.time_scale
 
                 with ui.HStack():
-                    self._connect_w = ui.Button("Connect to DSG Server", clicked_fn=self.connect_cb)
-                    self._update_w = ui.Button("Request Update", clicked_fn=self.update_cb)
+                    self._connect_w = ui.Button(
+                        "Connect to DSG Server", clicked_fn=self.connect_cb
+                    )
+                    self._update_w = ui.Button(
+                        "Request Update", clicked_fn=self.update_cb
+                    )
 
     def on_shutdown(self) -> None:
         self.info("ANSYS geometry service shutdown")
