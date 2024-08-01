@@ -3,3 +3,15 @@ venv
 dist/
 build/
 *.egg-info/
+# Compiled source #
+###################
+*.pyc
+*.pyd
+*.c
+*.cpp
+*.so
+*.o
+*.cache
+*.whl
+.pytest_cache/
+*/__pycache__
