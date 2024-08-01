@@ -3,6 +3,7 @@ venv
 dist/
 build/
 *.egg-info/
+.idea
 # Compiled source #
 ###################
 *.pyc
