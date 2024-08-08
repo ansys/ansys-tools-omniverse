@@ -20,6 +20,13 @@ For development environments, it can be useful to use a "future versioned"
 build of ansys-pyensight-core.  If the appropriate environmental variables
 are set, a pip install from another repository can be forced.
 """
+pyensight_version_file = os.path.join(os.path.dirname(__file__), "PYENSIGHT_VERSION")
+pyensight_version = None
+with open(pyensight_version_file, "r") as version_file:
+    pyensight_version = str(version_file.read()).strip()
+
+version = f"{pyensight_version}" if pyensight_version else None
+
 extra_args = []
 if "ANSYS_PYPI_INDEX_URL" in os.environ:
     extra_args.append(os.environ["ANSYS_PYPI_INDEX_URL"])
@@ -36,7 +43,7 @@ if os.environ.get("ANSYS_PYPI_REINSTALL", "") == "1":
     )
 
     logging.warning("ansys.tools.omniverse.server - Forced reinstall ansys-pyensight-core")
-    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args)
+    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args, version=version)
 
 try:
     # Checking to see if we need to install the module
@@ -45,7 +52,7 @@ try:
     import ansys.pyensight.core.utils.omniverse_dsg_server as tmp_ov_dsg_server  # noqa: F401
 except ModuleNotFoundError:
     logging.warning("ansys.tools.omniverse.server - Installing ansys-pyensight-core")
-    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args)
+    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args, version=version)
 
 """
 If we have a local copy of the module, the above installed the correct
