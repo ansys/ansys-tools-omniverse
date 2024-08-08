@@ -20,6 +20,13 @@ For development environments, it can be useful to use a "future versioned"
 build of ansys-pyensight-core.  If the appropriate environmental variables
 are set, a pip install from another repository can be forced.
 """
+pyensight_version_file = os.path.join(os.path.dirname(__file__), "PYENSIGHT_VERSION")
+pyensight_version = None
+with open(pyensight_version_file, "r") as version_file:
+    pyensight_version = str(version_file.read()).strip()
+
+version = f"{pyensight_version}" if pyensight_version else None
+
 extra_args = []
 if "ANSYS_PYPI_INDEX_URL" in os.environ:
     extra_args.append(os.environ["ANSYS_PYPI_INDEX_URL"])
@@ -36,7 +43,7 @@ if os.environ.get("ANSYS_PYPI_REINSTALL", "") == "1":
     )
 
     logging.warning("ansys.tools.omniverse.server - Forced reinstall ansys-pyensight-core")
-    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args)
+    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args, version=version)
 
 try:
     # Checking to see if we need to install the module
@@ -45,7 +52,7 @@ try:
     import ansys.pyensight.core.utils.omniverse_dsg_server as tmp_ov_dsg_server  # noqa: F401
 except ModuleNotFoundError:
     logging.warning("ansys.tools.omniverse.server - Installing ansys-pyensight-core")
-    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args)
+    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args, version=version)
 
 """
 If we have a local copy of the module, the above installed the correct
@@ -61,30 +68,26 @@ for _ in range(5):
 At this point, the name should be: {something}\ansys\pyensight\core\exts
 Check for the fragments in the right order.
 """
-tmp_kit_dir = kit_dir
-valid_dir = True
-for name in ["exts", "core", "pyensight", "ansys"]:
-    if not tmp_kit_dir.endswith(name):
-        valid_dir = False
-    tmp_kit_dir = os.path.dirname(tmp_kit_dir)
-if valid_dir:
+offsets = []
+for name in ["ansys", "pyensight", "core", "exts"]:
+    offsets.append(kit_dir.find(name))
+# if the order of the names in correct and there is no -1 in the offsets, we found it
+if (sorted(offsets) == offsets) and (sorted(offsets)[0] != -1):
     # name of 'ansys/pyensight/core' directory. We need three levels above.
     name = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(kit_dir))))
     sys.path.insert(0, name)
-    logging.warning(f"Using ansys.pyensight.core from: {name}")
+    logging.info(f"Using ansys.pyensight.core from: {name}")
 
 # at this point, we may need to repeat the imports that make have failed earlier
 import ansys.pyensight.core  # noqa: F811, E402
+import ansys.pyensight.core.utils.dsg_server as dsg_server  # noqa: E402
+import ansys.pyensight.core.utils.omniverse_dsg_server as ov_dsg_server  # noqa: E402
 
 # force a reload if we changed the path or had a partial failure that lead
 # to a pipapi install.
 _ = reload(ansys.pyensight.core)
 _ = reload(ansys.pyensight.core.utils)
-import ansys.pyensight.core.utils.dsg_server as dsg_server  # noqa: E402
-
 _ = reload(ansys.pyensight.core.utils.dsg_server)
-import ansys.pyensight.core.utils.omniverse_dsg_server as ov_dsg_server  # noqa: E402
-
 _ = reload(ansys.pyensight.core.utils.omniverse_dsg_server)
 
 logging.warning(f"Using ansys.pyensight.core from: {ansys.pyensight.core.__file__}")
