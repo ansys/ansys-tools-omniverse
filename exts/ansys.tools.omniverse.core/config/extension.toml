@@ -6,7 +6,7 @@ version = "0.1.0"
 authors = ["ANSYS"]
 
 # The title and description fields are primarily for displaying extension info in UI
-title = "ANSYS Tools Omniverse Service Server"
+title = "ANSYS Tools Omniverse Core Server"
 description = "A geometry synchronization service that enables export of geometry scenes from ANSYS products to Omniverse."
 
 # Path (relative to the root) or content of readme markdown file for UI.
@@ -38,9 +38,9 @@ icon = "data/icon.png"
 "omni.client" = {}
 "omni.usd" = {}
 
-# Main python module this extension provides, it will be publicly available as "import ansys.tools.omniverse.service".
+# Main python module this extension provides, it will be publicly available as "import ansys.tools.omniverse.core".
 [[python.module]]
-name = "ansys.tools.omniverse.service"
+name = "ansys.tools.omniverse.core"
 
 [[test]]
 # Extra dependencies only to be used during test run
@@ -50,10 +50,10 @@ dependencies = [
 
 [settings]
 # CLI setting defaults (note: "help" and "run" are also supported)
-exts."ansys.tools.omniverse.service".dsgUrl = "grpc://127.0.0.1:5234"
-exts."ansys.tools.omniverse.service".omniUrl = "omniverse://localhost/Users/test"
-exts."ansys.tools.omniverse.service".securityCode = ""
-exts."ansys.tools.omniverse.service".temporal = "0"
-exts."ansys.tools.omniverse.service".vrmode = "0"
-exts."ansys.tools.omniverse.service".normalizeGeometry = "0"
-exts."ansys.tools.omniverse.service".timeScale = "1.0"
+exts."ansys.tools.omniverse.core".dsgUrl = "grpc://127.0.0.1:5234"
+exts."ansys.tools.omniverse.core".omniUrl = "omniverse://localhost/Users/test"
+exts."ansys.tools.omniverse.core".securityCode = ""
+exts."ansys.tools.omniverse.core".temporal = "0"
+exts."ansys.tools.omniverse.core".vrmode = "0"
+exts."ansys.tools.omniverse.core".normalizeGeometry = "0"
+exts."ansys.tools.omniverse.core".timeScale = "1.0"

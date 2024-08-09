@@ -1,4 +1,4 @@
-ansys.tools.omniverse.service
+ansys.tools.omniverse.core
 ######################
 
 
@@ -9,7 +9,7 @@ ansys.tools.omniverse.service
    CHANGELOG
 
 
-.. automodule::"ansys.tools.omniverse.service"
+.. automodule::"ansys.tools.omniverse.core"
     :platform: Windows-x86_64, Linux-x86_64
     :members:
     :undoc-members:
