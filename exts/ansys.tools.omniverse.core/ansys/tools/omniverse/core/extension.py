@@ -28,23 +28,29 @@ with open(pyensight_version_file, "r") as version_file:
 version = f"{pyensight_version}" if pyensight_version else None
 
 extra_args = []
-if "ANSYS_PYPI_INDEX_URL" in os.environ:
-    extra_args.append(os.environ["ANSYS_PYPI_INDEX_URL"])
+if "dev0" in version and "ANSYS_PYPI_INDEX_URL" in os.environ:
+    # Get PyEnSight from the private PyPi repo - dev environment
+    extra_args.append(str(os.environ["ANSYS_PYPI_INDEX_URL"]))
+    extra_args.append("--pre")
 
 if os.environ.get("ANSYS_PYPI_REINSTALL", "") == "1":
+    package_name = "ansys-pyensight-core"
+
+    # Add possibility of installing local wheels
+    if os.environ.get("ANSYS_PYENSIGHT_LOCAL_WHEEL"):
+        package_name = os.environ.get("ANSYS_PYENSIGHT_LOCAL_WHEEL")
+
     extra_args.extend(
         [
             "--upgrade",
-            "--no-deps",
             "--no-cache-dir",
             "--force-reinstall",
-            "--pre",
         ]
     )
 
     logging.warning("ansys.tools.omniverse.server - Forced reinstall ansys-pyensight-core")
-    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args, version=version)
-
+    # Add ignore cache attribute when reinstalling so that you can switch between dev and released versions if needed
+    omni.kit.pipapi.install(package_name, extra_args=extra_args, version=version, ignore_cache=True)
 try:
     # Checking to see if we need to install the module
     import ansys.pyensight.core
@@ -59,10 +65,10 @@ If we have a local copy of the module, the above installed the correct
 dependencies, but we want to use the local copy.  Do this by prefixing
 the path and (re)load the modules.  The pyensight wheel includes the
 following for this file:
-ansys\pyensight\core\exts\ansys.tools.omniverse.service\ansys\tools\omniverse\service\extension.py
+ansys\pyensight\core\exts\ansys.tools.omniverse.core\ansys\tools\omniverse\core\extension.py
 """
 kit_dir = __file__
-for _ in range(5):
+for _ in range(6):
     kit_dir = os.path.dirname(kit_dir)
 """
 At this point, the name should be: {something}\ansys\pyensight\core\exts
@@ -85,11 +91,19 @@ import ansys.pyensight.core  # noqa: F811, E402
 
 # force a reload if we changed the path or had a partial failure that lead
 # to a pipapi install.
-_ = reload(ansys.pyensight.core)
+try:
+    _ = reload(ansys.pyensight.core)
+except Exception:
+    pass
+
+import ansys.pyensight.core.utils  # noqa: F811, E402
+
 _ = reload(ansys.pyensight.core.utils)
+
 import ansys.pyensight.core.utils.dsg_server as dsg_server  # noqa: E402
 
 _ = reload(ansys.pyensight.core.utils.dsg_server)
+
 import ansys.pyensight.core.utils.omniverse_dsg_server as ov_dsg_server  # noqa: E402
 
 _ = reload(ansys.pyensight.core.utils.omniverse_dsg_server)
@@ -143,7 +157,7 @@ def find_kit_filename() -> Optional[str]:
     return None
 
 
-class AnsysToolsOmniverseServiceServerExtension(omni.ext.IExt):
+class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
     """
     This class is an Omniverse kit.  The kit is capable of creating a
     connection to an Ansys Distributed Scene Graph service and pushing
@@ -175,6 +189,8 @@ class AnsysToolsOmniverseServiceServerExtension(omni.ext.IExt):
     @property
     def pyensight_version(self) -> str:
         """The ansys.pyensight.core version"""
+        if version:
+            return version
         return ansys.pyensight.core.VERSION
 
     @property
@@ -241,7 +257,7 @@ class AnsysToolsOmniverseServiceServerExtension(omni.ext.IExt):
         self._time_scale = value
 
     @classmethod
-    def get_instance(cls) -> Optional["AnsysToolsOmniverseServiceServerExtension"]:
+    def get_instance(cls) -> Optional["AnsysToolsOmniverseCoreServerExtension"]:
         return cls._service_instance
 
     @classmethod
@@ -317,8 +333,8 @@ class AnsysToolsOmniverseServiceServerExtension(omni.ext.IExt):
             The specific version of the kit.
         """
         self._version = ext_id
-        self.info(f"ANSYS tools omniverse service server startup: {self._version}")
-        AnsysToolsOmniverseServiceServerExtension._service_instance = self
+        self.info(f"ANSYS tools omniverse core server startup: {self._version}")
+        AnsysToolsOmniverseCoreServerExtension._service_instance = self
         if self._setting("help") is not None:
             self.help()
         elif self._setting("run") is not None:
@@ -328,38 +344,38 @@ class AnsysToolsOmniverseServiceServerExtension(omni.ext.IExt):
         """
         Called by Omniverse when the kit instance is shutting down.
         """
-        self.info("ANSYS tools omniverse service server shutdown")
+        self.info("ANSYS tools omniverse core server shutdown")
         self.shutdown()
-        AnsysToolsOmniverseServiceServerExtension._service_instance = None
+        AnsysToolsOmniverseCoreServerExtension._service_instance = None
 
     def help(self) -> None:
         """
         Send the CLI help output to logging.
         """
-        self.warning(f"ANSYS Tools Omniverse Service: {self._version}")
-        self.warning("  --/exts/ansys.tools.omniverse.service/help=1")
+        self.warning(f"ANSYS Tools Omniverse Core: {self._version}")
+        self.warning("  --/exts/ansys.tools.omniverse.core/help=1")
         self.warning("     Display this help.")
-        self.warning("  --/exts/ansys.tools.omniverse.service/run=1")
+        self.warning("  --/exts/ansys.tools.omniverse.core/run=1")
         self.warning("     Run the server.")
-        self.warning("  --/exts/ansys.tools.omniverse.service/omniUrl=URL")
+        self.warning("  --/exts/ansys.tools.omniverse.core/omniUrl=URL")
         self.warning(f"    Omniverse pathname.  (default: {self.omni_uri})")
-        self.warning("  --/exts/ansys.tools.omniverse.service/dsgUrl=URL")
+        self.warning("  --/exts/ansys.tools.omniverse.core/dsgUrl=URL")
         self.warning(f"    Dynamic Scene Graph connection URL.  (default: {self.dsg_uri})")
-        self.warning("  --/exts/ansys.tools.omniverse.service/securityCode=TOKEN")
+        self.warning("  --/exts/ansys.tools.omniverse.core/securityCode=TOKEN")
         self.warning(f"    Dynamic Scene Graph security token.  (default: {self.security_token})")
-        self.warning("  --/exts/ansys.tools.omniverse.service/temporal=0|1")
+        self.warning("  --/exts/ansys.tools.omniverse.core/temporal=0|1")
         self.warning(
             f"    If non-zero, include all timeseteps in the scene.  (default: {self.temporal})"
         )
-        self.warning("  --/exts/ansys.tools.omniverse.service/vrmode=0|1")
+        self.warning("  --/exts/ansys.tools.omniverse.core/vrmode=0|1")
         self.warning(
             f"    If non-zero, do not include a camera in the scene.  (default: {self.vrmode})"
         )
-        self.warning("  --/exts/ansys.tools.omniverse.service/normalizeGeometry=0|1")
+        self.warning("  --/exts/ansys.tools.omniverse.core/normalizeGeometry=0|1")
         self.warning(
             f"    If non-zero, remap the geometry to the domain [-1,-1,-1]-[1,1,1].  (default: {self.normalize_geometry})"
         )
-        self.warning("  --/exts/ansys.tools.omniverse.service/timeScale=FLOAT")
+        self.warning("  --/exts/ansys.tools.omniverse.core/timeScale=FLOAT")
         self.warning(
             f"    Multiply all DSG time values by this value.  (default: {self.time_scale})"
         )
@@ -412,20 +428,20 @@ class AnsysToolsOmniverseServiceServerExtension(omni.ext.IExt):
         for _ in range(5):
             kit_dir = os.path.dirname(kit_dir)
         cmd.extend(["--ext-folder", kit_dir])
-        cmd.extend(["--enable", "ansys.tools.omniverse.service"])
+        cmd.extend(["--enable", "ansys.tools.omniverse.core"])
         if self.security_token:
-            cmd.append(f'--/exts/ansys.tools.omniverse.service/securityCode="{self.security_token}"')
+            cmd.append(f'--/exts/ansys.tools.omniverse.core/securityCode="{self.security_token}"')
         if self.temporal:
-            cmd.append("--/exts/ansys.tools.omniverse.service/temporal=1")
+            cmd.append("--/exts/ansys.tools.omniverse.core/temporal=1")
         if self.vrmode:
-            cmd.append("--/exts/ansys.tools.omniverse.service/vrmode=1")
+            cmd.append("--/exts/ansys.tools.omniverse.core/vrmode=1")
         if self.normalize_geometry:
-            cmd.append("--/exts/ansys.tools.omniverse.service/normalizeGeometry=1")
+            cmd.append("--/exts/ansys.tools.omniverse.core/normalizeGeometry=1")
         if self.time_scale != 1.0:
-            cmd.append(f"--/exts/ansys.tools.omniverse.service/timeScale={self.time_scale}")
-        cmd.append(f"--/exts/ansys.tools.omniverse.service/omniUrl={self.omni_uri}")
-        cmd.append(f"--/exts/ansys.tools.omniverse.service/dsgUrl={self.dsg_uri}")
-        cmd.append("--/exts/ansys.tools.omniverse.service/run=1")
+            cmd.append(f"--/exts/ansys.tools.omniverse.core/timeScale={self.time_scale}")
+        cmd.append(f"--/exts/ansys.tools.omniverse.core/omniUrl={self.omni_uri}")
+        cmd.append(f"--/exts/ansys.tools.omniverse.core/dsgUrl={self.dsg_uri}")
+        cmd.append("--/exts/ansys.tools.omniverse.core/run=1")
         env_vars = os.environ.copy()
         # we are launching the kit from an Omniverse app.  In this case, we
         # inform the kit instance of:

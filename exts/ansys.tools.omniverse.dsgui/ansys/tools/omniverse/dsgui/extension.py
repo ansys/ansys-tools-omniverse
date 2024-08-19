@@ -4,12 +4,12 @@ import time
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-import ansys.tools.omniverse.service
+import ansys.tools.omniverse.core
 import omni.ext
 import omni.ui as ui
 
 
-class AnsysToolsOmniverseServiceUIExtension(omni.ext.IExt):
+class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._window: Any = None
@@ -28,8 +28,8 @@ class AnsysToolsOmniverseServiceUIExtension(omni.ext.IExt):
         self._connected = False
 
     @property
-    def service(self) -> Optional["AnsysToolsOmniverseServiceUIExtension"]:
-        return ansys.tools.omniverse.service.AnsysToolsOmniverseServiceServerExtension.get_instance()
+    def service(self) -> Optional["AnsysToolsOmniverseDSGUIExtension"]:
+        return ansys.tools.omniverse.core.AnsysToolsOmniverseCoreServerExtension.get_instance()
 
     def info(self, text: str) -> None:
         self._logger.info(text)
@@ -89,7 +89,7 @@ class AnsysToolsOmniverseServiceUIExtension(omni.ext.IExt):
 
     def connect_cb(self) -> None:
         if self.service is None:
-            self.error("Unable to find ansys.tools.omniverse.service instance")
+            self.error("Unable to find ansys.tools.omniverse.core instance")
             return
         if self._connected:
             self.stop_server()
@@ -109,9 +109,9 @@ class AnsysToolsOmniverseServiceUIExtension(omni.ext.IExt):
         self._grpc.command(cmd, do_eval=False)
 
     def on_startup(self, ext_id: str) -> None:
-        self.info(f"ANSYS tools omniverse service GUI startup: {ext_id}")
+        self.info(f"ANSYS tools omniverse DSG GUI startup: {ext_id}")
         if self.service is None:
-            self.error("Unable to find ansys.tools.omniverse.service instance")
+            self.error("Unable to find ansys.tools.omniverse.core instance")
         self.build_ui()
         self._update_callback()
 
@@ -144,7 +144,7 @@ class AnsysToolsOmniverseServiceUIExtension(omni.ext.IExt):
         self._omni_uri_w.enabled = not self._connected
 
     def build_ui(self) -> None:
-        self._window = ui.Window(f"ANSYS Tools Omniverse Service ({self.service.pyensight_version})")
+        self._window = ui.Window(f"ANSYS Tools Omniverse DSG ({self.service.pyensight_version})")
         with self._window.frame:
             with ui.VStack(height=0, spacing=5):
                 self._label_w = ui.Label("No connected DSG server")
@@ -206,7 +206,7 @@ class AnsysToolsOmniverseServiceUIExtension(omni.ext.IExt):
                     self._update_w = ui.Button("Request Update", clicked_fn=self.update_cb)
 
     def on_shutdown(self) -> None:
-        self.info("ANSYS Tools Omniverse service shutdown")
+        self.info("ANSYS Tools Omniverse DSG shutdown")
         self.stop_server()
         self._window = None
         self._label_w = None
