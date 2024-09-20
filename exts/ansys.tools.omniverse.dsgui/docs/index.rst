@@ -1,4 +1,4 @@
-ansys.tools.omniverse.serviceui
+ansys.tools.omniverse.dsgui
 ########################
 
 
@@ -9,7 +9,7 @@ ansys.tools.omniverse.serviceui
    CHANGELOG
 
 
-.. automodule::"ansys.tools.omniverse.serviceui"
+.. automodule::"ansys.tools.omniverse.dsgui"
     :platform: Windows-x86_64, Linux-x86_64
     :members:
     :undoc-members:
