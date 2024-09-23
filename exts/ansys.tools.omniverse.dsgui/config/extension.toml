@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "0.1.0"
+version = "1.0.0"
 
 # Lists people or organizations that are considered the "authors" of the package.
 authors = ["ANSYS"]
@@ -13,7 +13,7 @@ description = "A geometry synchronization service that enables export of geometr
 readme  = "docs/README.md"
 
 # URL of the extension source repository.
-repository = "https://github.com/ansys-internal/ansys-tools-omniverse"
+repository = "https://github.com/ansys/pyensight"
 
 # One of categories for UI.
 category = "simulation"

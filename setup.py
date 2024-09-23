@@ -74,7 +74,6 @@ if __name__ == "__main__":
         url=f"https://github.com/ansys-internal/{package_name}",
         license="MIT",
         python_requires=">=3.9",
-        install_requires=["ansys-pyensight-core==0.8.8"],
         package_dir={"": "src"},
         packages=_packages,
         cmdclass={"build_py": CustomBuildPy},

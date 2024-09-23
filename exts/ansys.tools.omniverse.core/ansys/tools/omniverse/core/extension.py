@@ -1,114 +1,23 @@
-from importlib import reload
 import json
 import logging
 import os
+import platform
 import subprocess
 import sys
 import tempfile
 from typing import Optional
-from urllib.parse import urlparse
 import uuid
 
 import carb.settings
 import omni.ext
 import omni.kit.app
 import omni.kit.pipapi
-import psutil
 
 """
-For development environments, it can be useful to use a "future versioned"
-build of ansys-pyensight-core.  If the appropriate environmental variables
-are set, a pip install from another repository can be forced.
+The current kit leverages an EnSight installation.  It can find this via
+environmental variable/directory scanning (looking for an Ansys installation)
+or by looking at CEI_HOME. CEI_HOME is tried first.
 """
-pyensight_version_file = os.path.join(os.path.dirname(__file__), "PYENSIGHT_VERSION")
-pyensight_version = None
-with open(pyensight_version_file, "r") as version_file:
-    pyensight_version = str(version_file.read()).strip()
-
-version = f"{pyensight_version}" if pyensight_version else None
-
-extra_args = []
-if "dev0" in version and "ANSYS_PYPI_INDEX_URL" in os.environ:
-    # Get PyEnSight from the private PyPi repo - dev environment
-    extra_args.append(str(os.environ["ANSYS_PYPI_INDEX_URL"]))
-    extra_args.append("--pre")
-
-if os.environ.get("ANSYS_PYPI_REINSTALL", "") == "1":
-    package_name = "ansys-pyensight-core"
-
-    # Add possibility of installing local wheels
-    if os.environ.get("ANSYS_PYENSIGHT_LOCAL_WHEEL"):
-        package_name = os.environ.get("ANSYS_PYENSIGHT_LOCAL_WHEEL")
-
-    extra_args.extend(
-        [
-            "--upgrade",
-            "--no-cache-dir",
-            "--force-reinstall",
-        ]
-    )
-
-    logging.warning("ansys.tools.omniverse.server - Forced reinstall ansys-pyensight-core")
-    # Add ignore cache attribute when reinstalling so that you can switch between dev and released versions if needed
-    omni.kit.pipapi.install(package_name, extra_args=extra_args, version=version, ignore_cache=True)
-try:
-    # Checking to see if we need to install the module
-    import ansys.pyensight.core
-    import ansys.pyensight.core.utils.dsg_server as tmp_dsg_server  # noqa: F401
-    import ansys.pyensight.core.utils.omniverse_dsg_server as tmp_ov_dsg_server  # noqa: F401
-except ModuleNotFoundError:
-    logging.warning("ansys.tools.omniverse.server - Installing ansys-pyensight-core")
-    omni.kit.pipapi.install("ansys-pyensight-core", extra_args=extra_args, version=version)
-
-"""
-If we have a local copy of the module, the above installed the correct
-dependencies, but we want to use the local copy.  Do this by prefixing
-the path and (re)load the modules.  The pyensight wheel includes the
-following for this file:
-ansys\pyensight\core\exts\ansys.tools.omniverse.core\ansys\tools\omniverse\core\extension.py
-"""
-kit_dir = __file__
-for _ in range(6):
-    kit_dir = os.path.dirname(kit_dir)
-"""
-At this point, the name should be: {something}\ansys\pyensight\core\exts
-Check for the fragments in the right order.
-"""
-tmp_kit_dir = kit_dir
-valid_dir = True
-for name in ["exts", "core", "pyensight", "ansys"]:
-    if not tmp_kit_dir.endswith(name):
-        valid_dir = False
-    tmp_kit_dir = os.path.dirname(tmp_kit_dir)
-if valid_dir:
-    # name of 'ansys/pyensight/core' directory. We need three levels above.
-    name = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(kit_dir))))
-    sys.path.insert(0, name)
-    logging.warning(f"Using ansys.pyensight.core from: {name}")
-
-# at this point, we may need to repeat the imports that make have failed earlier
-import ansys.pyensight.core  # noqa: F811, E402
-
-# force a reload if we changed the path or had a partial failure that lead
-# to a pipapi install.
-try:
-    _ = reload(ansys.pyensight.core)
-except Exception:
-    pass
-
-import ansys.pyensight.core.utils  # noqa: F811, E402
-
-_ = reload(ansys.pyensight.core.utils)
-
-import ansys.pyensight.core.utils.dsg_server as dsg_server  # noqa: E402
-
-_ = reload(ansys.pyensight.core.utils.dsg_server)
-
-import ansys.pyensight.core.utils.omniverse_dsg_server as ov_dsg_server  # noqa: E402
-
-_ = reload(ansys.pyensight.core.utils.omniverse_dsg_server)
-
-logging.warning(f"Using ansys.pyensight.core from: {ansys.pyensight.core.__file__}")
 
 
 def find_kit_filename() -> Optional[str]:
@@ -116,7 +25,7 @@ def find_kit_filename() -> Optional[str]:
     Use a combination of the current omniverse application and the information
     in the local .nvidia-omniverse/config/omniverse.toml file to come up with
     the pathname of a kit executable suitable for hosting another copy of the
-    ansys.tools.omniverse.server kit.
+    ansys.tools.omniverse.core kit.
 
     Returns
     -------
@@ -172,6 +81,9 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self._logger = logging.getLogger(ext_name)
         self._dsg_uri = self._setting("dsgUrl", "ENSIGHT_GRPC_URI")
         self._omni_uri = self._setting("omniUrl", "ENSIGHT_OMNI_URI")
+        if self._omni_uri.startswith("omniverse://"):
+            self._omni_uri = "~"
+        self._omni_uri = os.path.expanduser(self._omni_uri)
         self._security_token = self._setting("securityCode", "ENSIGHT_SECURITY_TOKEN")
         self._temporal = self._setting("temporal") != "0"
         self._vrmode = self._setting("vrmode") != "0"
@@ -179,19 +91,17 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             scale = float(self._setting("timeScale"))
         except ValueError:
             scale = 1.0
-        self._time_scale = scale
+        self._time_scale: float = scale
         self._normalize_geometry = self._setting("normalizeGeometry") != "0"
-        self._version = "unknown"
-        self._shutdown = False
+        self._version: str = ""
+        self._shutdown: bool = False
         self._server_process = None
         self._status_filename: str = ""
+        self._interpreter = self._find_ensight_cpython()
 
     @property
-    def pyensight_version(self) -> str:
-        """The ansys.pyensight.core version"""
-        if version:
-            return version
-        return ansys.pyensight.core.VERSION
+    def version(self) -> str:
+        return self._version
 
     @property
     def dsg_uri(self) -> str:
@@ -203,12 +113,12 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self._dsg_uri = uri
 
     @property
-    def omni_uri(self) -> str:
-        """The endpoint of an Omniverse Nucleus service:  omniverse://{hostname}/{path}"""
+    def destination(self) -> str:
+        """The output USD directory name"""
         return self._omni_uri
 
-    @omni_uri.setter
-    def omni_uri(self, value: str) -> None:
+    @destination.setter
+    def destination(self, value: str) -> None:
         self._omni_uri = value
 
     @property
@@ -323,6 +233,48 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         """
         self._logger.error(text)
 
+    def _find_ensight_cpython(self) -> Optional[str]:
+        """
+        Scan the current system, looking for EnSight installations, specifically, cpython.
+        Check: PYENSIGHT_ANSYS_INSTALLATION, CEI_HOME, AWP_ROOT* in that order
+
+        Returns
+        -------
+            The first cpython found or None
+
+        """
+        dirs_to_check = []
+        if "PYENSIGHT_ANSYS_INSTALLATION" in os.environ:
+            env_inst = os.environ["PYENSIGHT_ANSYS_INSTALLATION"]
+            dirs_to_check.append(env_inst)
+            # Note: PYENSIGHT_ANSYS_INSTALLATION is designed for devel builds
+            # where there is no CEI directory, but for folks using it in other
+            # ways, we'll add that one too, just in case.
+            dirs_to_check.append(os.path.join(env_inst, "CEI"))
+
+        if "CEI_HOME" in os.environ:
+            env_inst = os.environ["CEI_HOME"]
+            dirs_to_check.append(env_inst)
+
+        # Look for most recent Ansys install
+        awp_roots = []
+        for env_name in dict(os.environ).keys():
+            if env_name.startswith("AWP_ROOT"):
+                awp_roots.append(env_name)
+        awp_roots.sort(reverse=True)
+        for env_name in awp_roots:
+            dirs_to_check.append(os.path.join(os.environ[env_name], "CEI"))
+
+        # check all the collected locations in order
+        cpython = "cpython"
+        if platform.system() == "Windows":
+            cpython += ".bat"
+        for install_dir in dirs_to_check:
+            launch_file = os.path.join(install_dir, "bin", cpython)
+            if os.path.isfile(launch_file):
+                return launch_file
+        return None
+
     def on_startup(self, ext_id: str) -> None:
         """
         Called by Omniverse when the kit instance is started.
@@ -332,13 +284,9 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         ext_id
             The specific version of the kit.
         """
-        self._version = ext_id
+        self._version = ext_id.split("-")[-1]
         self.info(f"ANSYS tools omniverse core server startup: {self._version}")
         AnsysToolsOmniverseCoreServerExtension._service_instance = self
-        if self._setting("help") is not None:
-            self.help()
-        elif self._setting("run") is not None:
-            self.run_server()
 
     def on_shutdown(self) -> None:
         """
@@ -348,108 +296,42 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self.shutdown()
         AnsysToolsOmniverseCoreServerExtension._service_instance = None
 
-    def help(self) -> None:
+    def dsg_export(self) -> None:
         """
-        Send the CLI help output to logging.
+        Use the oneshot feature of the pyensight omniverse_cli to push the current
+        EnSight scene to the supplied directory in USD format.
         """
-        self.warning(f"ANSYS Tools Omniverse Core: {self._version}")
-        self.warning("  --/exts/ansys.tools.omniverse.core/help=1")
-        self.warning("     Display this help.")
-        self.warning("  --/exts/ansys.tools.omniverse.core/run=1")
-        self.warning("     Run the server.")
-        self.warning("  --/exts/ansys.tools.omniverse.core/omniUrl=URL")
-        self.warning(f"    Omniverse pathname.  (default: {self.omni_uri})")
-        self.warning("  --/exts/ansys.tools.omniverse.core/dsgUrl=URL")
-        self.warning(f"    Dynamic Scene Graph connection URL.  (default: {self.dsg_uri})")
-        self.warning("  --/exts/ansys.tools.omniverse.core/securityCode=TOKEN")
-        self.warning(f"    Dynamic Scene Graph security token.  (default: {self.security_token})")
-        self.warning("  --/exts/ansys.tools.omniverse.core/temporal=0|1")
-        self.warning(
-            f"    If non-zero, include all timeseteps in the scene.  (default: {self.temporal})"
-        )
-        self.warning("  --/exts/ansys.tools.omniverse.core/vrmode=0|1")
-        self.warning(
-            f"    If non-zero, do not include a camera in the scene.  (default: {self.vrmode})"
-        )
-        self.warning("  --/exts/ansys.tools.omniverse.core/normalizeGeometry=0|1")
-        self.warning(
-            f"    If non-zero, remap the geometry to the domain [-1,-1,-1]-[1,1,1].  (default: {self.normalize_geometry})"
-        )
-        self.warning("  --/exts/ansys.tools.omniverse.core/timeScale=FLOAT")
-        self.warning(
-            f"    Multiply all DSG time values by this value.  (default: {self.time_scale})"
-        )
-
-    def is_server_running(self) -> bool:
-        """
-        Returns True if the server is running.
-
-        Returns
-        -------
-        bool
-            True if the server is running.
-        """
-        if self._server_process:
-            if psutil.pid_exists(self._server_process.pid):
-                return True
-        return False
-
-    def stop_server(self) -> None:
-        """
-        If a DSG server connection has been started, stop it.  It could be in
-        process or a subprocess.
-        """
-        try:
-            self._shutdown = True
-            if self._server_process:
-                for child in psutil.Process(self._server_process.pid).children(recursive=True):
-                    child.kill()
-                self._server_process.kill()
-        except psutil.NoSuchProcess:
-            pass
-        self._server_process = None
-        self._shutdown = False
-
-    def launch_server(self) -> None:
-        """
-        Launch a DSG to Omniverse server as a subprocess.
-        """
-        if self._server_process:
-            self.warning("Only a single subprocess server is supported.")
-            return
-        kit_name = find_kit_filename()
-        if kit_name is None:
+        if self._interpreter is None:
             self.warning("Unable to determine a kit executable pathname.")
             return
-        self.info(f"Using {kit_name} to launch the server")
-        cmd = [kit_name]
-        # kit extension location
-        kit_dir = __file__
-        for _ in range(5):
-            kit_dir = os.path.dirname(kit_dir)
-        cmd.extend(["--ext-folder", kit_dir])
-        cmd.extend(["--enable", "ansys.tools.omniverse.core"])
+        self.info(f"Using {self._interpreter} to run the server")
+        cmd = [self._interpreter]
+        cmd.extend(["-m", "ansys.pyensight.core.utils.omniverse_cli"])
+        cmd.append(self.destination)
         if self.security_token:
-            cmd.append(f'--/exts/ansys.tools.omniverse.core/securityCode="{self.security_token}"')
+            cmd.extend(["--security_token", self.security_token])
         if self.temporal:
-            cmd.append("--/exts/ansys.tools.omniverse.core/temporal=1")
+            cmd.extend(["--temporal", "true"])
         if self.vrmode:
-            cmd.append("--/exts/ansys.tools.omniverse.core/vrmode=1")
+            cmd.extend(["--include_camera", "false"])
         if self.normalize_geometry:
-            cmd.append("--/exts/ansys.tools.omniverse.core/normalizeGeometry=1")
+            cmd.extend(["--normalize_geometry", "true"])
         if self.time_scale != 1.0:
-            cmd.append(f"--/exts/ansys.tools.omniverse.core/timeScale={self.time_scale}")
-        cmd.append(f"--/exts/ansys.tools.omniverse.core/omniUrl={self.omni_uri}")
-        cmd.append(f"--/exts/ansys.tools.omniverse.core/dsgUrl={self.dsg_uri}")
-        cmd.append("--/exts/ansys.tools.omniverse.core/run=1")
+            cmd.extend(["--time_scale", str(self.time_scale)])
+        cmd.extend(["--dsg_uri", self.dsg_uri])
+        cmd.extend(["--oneshot", "true"])
         env_vars = os.environ.copy()
         # we are launching the kit from an Omniverse app.  In this case, we
         # inform the kit instance of:
         # (1) the name of the "server status" file, if any
         self._new_status_file()
         env_vars["ANSYS_OV_SERVER_STATUS_FILENAME"] = self._status_filename
-        working_dir = os.path.join(os.path.dirname(ansys.pyensight.core.__file__), "utils")
-        self._server_process = subprocess.Popen(cmd, close_fds=True, env=env_vars, cwd=working_dir)
+        try:
+            self.info(f"Running {' '.join(cmd)}")
+            self._server_process = subprocess.Popen(cmd, close_fds=True, env=env_vars)
+        except Exception as error:
+            self.warning(f"Error running translator: {error}")
+        self._new_status_file(new=False)
 
     def _new_status_file(self, new=True) -> None:
         """
@@ -461,10 +343,11 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             If True, create a new status file.
         """
         if self._status_filename:
-            try:
-                os.remove(self._status_filename)
-            except OSError:
-                self.warning(f"Unable to delete the status file: {self._status_filename}")
+            if os.path.exists(self._status_filename):
+                try:
+                    os.remove(self._status_filename)
+                except OSError:
+                    self.warning(f"Unable to delete the status file: {self._status_filename}")
         self._status_filename = ""
         if new:
             self._status_filename = os.path.join(
@@ -490,51 +373,3 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         except Exception:
             return {}
         return data
-
-    def run_server(self) -> None:
-        """
-        Run a DSG to Omniverse server in process.
-
-        Note: this method does not return until the DSG connection is dropped or
-        self.stop_server() has been called.
-        """
-
-        # Build the Omniverse connection
-        omni_link = ov_dsg_server.OmniverseWrapper(path=self._omni_uri, verbose=1)
-        self.info("Omniverse connection established.")
-
-        # parse the DSG USI
-        parsed = urlparse(self.dsg_uri)
-        port = parsed.port
-        host = parsed.hostname
-
-        # link it to a DSG session
-        update_handler = ov_dsg_server.OmniverseUpdateHandler(omni_link)
-        dsg_link = dsg_server.DSGSession(
-            port=port,
-            host=host,
-            vrmode=self.vrmode,
-            security_code=self.security_token,
-            verbose=1,
-            normalize_geometry=self.normalize_geometry,
-            time_scale=self.time_scale,
-            handler=update_handler,
-        )
-
-        # Start the DSG link
-        self.info(f"Making DSG connection to: {self.dsg_uri}")
-        err = dsg_link.start()
-        if err < 0:
-            self.error("Omniverse connection failed.")
-            return
-
-        # Initial pull request
-        dsg_link.request_an_update(animation=self.temporal)
-
-        # until the link is dropped, continue
-        while not dsg_link.is_shutdown() and not self._shutdown:
-            dsg_link.handle_one_update()
-
-        self.info("Shutting down DSG connection")
-        dsg_link.end()
-        omni_link.shutdown()
