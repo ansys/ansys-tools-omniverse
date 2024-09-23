@@ -1,11 +1,15 @@
+import docker
 import json
 import logging
 import os
 import platform
+import random
+import socket
 import subprocess
 import sys
 import tempfile
-from typing import Optional
+import time
+from typing import List, Optional
 import uuid
 
 import carb.settings
@@ -66,6 +70,64 @@ def find_kit_filename() -> Optional[str]:
     return None
 
 
+def find_unused_ports(count: int, avoid: Optional[List[int]] = None) -> Optional[List[int]]:
+    """Find "count" unused ports on the host system
+
+    A port is considered unused if it does not respond to a "connect" attempt.  Walk
+    the ports from 'start' to 'end' looking for unused ports and avoiding any ports
+    in the 'avoid' list.  Stop once the desired number of ports have been
+    found.  If an insufficient number of ports were found, return None.
+
+    Parameters
+    ----------
+    count: int :
+        Number of unused ports to find
+    avoid: Optional[List[int]] :
+        An optional list of ports not to check
+
+    Returns
+    -------
+        The detected ports or None on failure
+
+    """
+    if avoid is None:
+        avoid = []
+    ports = list()
+
+    # pick a starting port number
+    start = random.randint(1024, 64000)
+    # We will scan for 65530 ports unless end is specified
+    port_mod = 65530
+    end = start + port_mod - 1
+    # walk the "virtual" port range
+    for base_port in range(start, end + 1):
+        # Map to physical port range
+        # There have been some issues with 65534+ so we stop at 65530
+        port = base_port % port_mod
+        # port 0 is special
+        if port == 0:  # pragma: no cover
+            continue  # pragma: no cover
+        # avoid admin ports
+        if port < 1024:  # pragma: no cover
+            continue  # pragma: no cover
+        # are we supposed to skip this one?
+        if port in avoid:  # pragma: no cover
+            continue  # pragma: no cover
+        # is anyone listening?
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(("127.0.0.1", port))
+        if result != 0:
+            ports.append(port)
+        else:
+            sock.close()  # pragma: no cover
+        if len(ports) >= count:
+            return ports
+    # in case we failed...
+    if len(ports) < count:  # pragma: no cover
+        return None  # pragma: no cover
+    return ports  # pragma: no cover
+
+
 class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
     """
     This class is an Omniverse kit.  The kit is capable of creating a
@@ -97,6 +159,9 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self._shutdown: bool = False
         self._server_process = None
         self._status_filename: str = ""
+        self._container = None
+        self._ansys_version = None
+        self._data_directory = None
         self._interpreter = self._find_ensight_cpython()
 
     @property
@@ -295,12 +360,43 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self.info("ANSYS tools omniverse core server shutdown")
         self.shutdown()
         AnsysToolsOmniverseCoreServerExtension._service_instance = None
+       
+    def _docker_command_line_export(self):
+        cmd = f"/ansys_inc/v{self._ansys_version}/CEI/bin/cpython{self._ansys_version}"
+        cmd += " -m ansys.pyensight.core.utils.omniverse_cli"
+        if self.security_token:
+            cmd += f" --security_token {self.security_token}"
+        if self.temporal:
+            cmd += " --temporal true"
+        if self.vrmode:
+            cmd += " --include_camera false"
+        if self.normalize_geometry:
+            cmd += " --normalize_geometry true"
+        if self.time_scale != 1.0:
+            cmd += f" --time_scale {self.time_scale}"
+        cmd += f" --dsg_uri {self.dsg_uri}"
+        cmd += " --oneshot true"
+        cmd += f" {self.destination}"
+        return cmd
+    
+    def create_container(self, container_name, ansys_version, data_directory):
+        client = docker.from_env()
+        self._container = client.containers.get(container_name)
+        self._ansys_version = ansys_version
+        self._data_directory = data_directory
 
-    def dsg_export(self) -> None:
-        """
-        Use the oneshot feature of the pyensight omniverse_cli to push the current
-        EnSight scene to the supplied directory in USD format.
-        """
+    def _dsg_export_docker(self):
+        if not self._ansys_version:
+            raise RuntimeError("Ansys version required to run command line")
+        docker_status_file = os.path.basename(self._status_filename)
+        env_vars = {
+            "ANSYS_OV_SERVER_STATUS_FILENAME" : f"/data/{docker_status_file}"
+        }
+        result = self._container.exec_run(self._docker_command_line_export(), environment=env_vars)
+        if result.exit_code != 0:
+            self.warning(f"Error during DSG export from docker container {result.output.decode('utf-8')}")
+    
+    def _dsg_export_local(self):
         if self._interpreter is None:
             self.warning("Unable to determine a kit executable pathname.")
             return
@@ -324,15 +420,25 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         # we are launching the kit from an Omniverse app.  In this case, we
         # inform the kit instance of:
         # (1) the name of the "server status" file, if any
-        self._new_status_file()
         env_vars["ANSYS_OV_SERVER_STATUS_FILENAME"] = self._status_filename
         try:
             self.info(f"Running {' '.join(cmd)}")
             self._server_process = subprocess.Popen(cmd, close_fds=True, env=env_vars)
         except Exception as error:
             self.warning(f"Error running translator: {error}")
-        self._new_status_file(new=False)
 
+    def dsg_export(self) -> None:
+        """
+        Use the oneshot feature of the pyensight omniverse_cli to push the current
+        EnSight scene to the supplied directory in USD format.
+        """
+        self._new_status_file()
+        if self._container:
+            self._dsg_export_docker()
+        else:
+            self._dsg_export_local()
+        self._new_status_file(new=False)
+    
     def _new_status_file(self, new=True) -> None:
         """
         Remove any existing status file and create a new one if requested.
@@ -350,8 +456,13 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
                     self.warning(f"Unable to delete the status file: {self._status_filename}")
         self._status_filename = ""
         if new:
+            base_dir = None
+            if self._container:
+                base_dir = self._data_directory
+            else:
+                base_dir = tempfile.gettempdir()
             self._status_filename = os.path.join(
-                tempfile.gettempdir(), str(uuid.uuid1()) + "_gs_status.txt"
+                base_dir, str(uuid.uuid1()) + "_gs_status.txt"
             )
 
     def read_status_file(self) -> dict:
