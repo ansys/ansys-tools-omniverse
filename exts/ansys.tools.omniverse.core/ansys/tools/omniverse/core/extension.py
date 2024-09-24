@@ -386,9 +386,9 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
 
     def _dsg_export_docker(self):
         """Utility function to export data from a docker container for EnSight.
-        
+
         To be used only in testing environment. Please note, that the way
-        it is designed, it will wait for the export to finish, 
+        it is designed, it will wait for the export to finish,
         differently from the local install case.
         """
         result = self._session._launcher._container.exec_run(

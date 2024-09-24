@@ -11,20 +11,45 @@ env:
   ENSIGHT_IMAGE: 'ghcr.io/ansys-internal/ensight_dev'
 
 jobs:
+  nightly_test:
+    name: Nightly tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ${{ env.ENSIGHT_IMAGE }}
+
+      - name: Run pytest
+        uses: ansys/actions/tests-pytest@v7
+        env:
+          ANSYSLMD_LICENSE_FILE: ${{ format('1055@{0}', secrets.LICENSE_SERVER) }}
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          requires-xvfb: true
+
+      - uses: codecov/codecov-action@v3
+        name: 'Upload coverage to CodeCov'
+
   nightly_build:
     name: Nightly build
     runs-on: ubuntu-latest
     steps:
 
       - name: Build library source and wheel artifacts
-        uses: ansys/actions/build-library@v4
+        uses: ansys/actions/build-library@v7
         with:
           library-name: ${{ env.PACKAGE_NAME }}
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
 
       - name: Upload wheel
         if: ${{ !env.ACT }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ansys-pyensight-wheel
           path: dist/
@@ -42,5 +67,3 @@ jobs:
           TWINE_USERNAME: PAT
           TWINE_PASSWORD: ${{ secrets.PYANSYS_PYPI_PRIVATE_PAT }}
           TWINE_REPOSITORY_URL: ${{ secrets.PRIVATE_PYPI_URL }}
-
-
