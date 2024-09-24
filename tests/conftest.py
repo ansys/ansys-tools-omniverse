@@ -1,8 +1,11 @@
 import os
 
 from ansys.pyensight.core import DockerLauncher, LocalLauncher
-from omni.kit_app import KitApp
 import pytest
+
+os.environ["OMNI_KIT_ACCEPT_EULA"] = "yes"
+
+from omni.kit_app import KitApp  # noqa: E402
 
 EXTS_FOLDER = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "exts", "ansys.tools.omniverse.core"
@@ -45,7 +48,6 @@ def launch_ensight(tmpdir, pytestconfig: pytest.Config):
 
 @pytest.fixture
 def launch_app_and_ensight(launch_ensight):
-    os.environ["OMNI_KIT_ACCEPT_EULA"] = "yes"
     app = KitApp()
     # Launch Kit
     session, use_local, data_dir = launch_ensight
