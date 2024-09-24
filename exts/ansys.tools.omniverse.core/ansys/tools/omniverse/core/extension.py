@@ -1,4 +1,3 @@
-import docker
 import json
 import logging
 import os
@@ -8,7 +7,6 @@ import socket
 import subprocess
 import sys
 import tempfile
-import time
 from typing import List, Optional
 import uuid
 
@@ -159,9 +157,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self._shutdown: bool = False
         self._server_process = None
         self._status_filename: str = ""
-        self._container = None
-        self._ansys_version = None
-        self._data_directory = None
+        self._session = None
         self._interpreter = self._find_ensight_cpython()
 
     @property
@@ -360,9 +356,10 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self.info("ANSYS tools omniverse core server shutdown")
         self.shutdown()
         AnsysToolsOmniverseCoreServerExtension._service_instance = None
-       
+
     def _docker_command_line_export(self):
-        cmd = f"/ansys_inc/v{self._ansys_version}/CEI/bin/cpython{self._ansys_version}"
+        ansys_version = self._session._launcher._enshell.ansys_version()
+        cmd = f"/ansys_inc/v{ansys_version}/CEI/bin/cpython{ansys_version}"
         cmd += " -m ansys.pyensight.core.utils.omniverse_cli"
         if self.security_token:
             cmd += f" --security_token {self.security_token}"
@@ -376,26 +373,34 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             cmd += f" --time_scale {self.time_scale}"
         cmd += f" --dsg_uri {self.dsg_uri}"
         cmd += " --oneshot true"
-        cmd += f" {self.destination}"
+        cmd += " /home/ensight/dsg_export/"
         return cmd
-    
-    def create_container(self, container_name, ansys_version, data_directory):
-        client = docker.from_env()
-        self._container = client.containers.get(container_name)
-        self._ansys_version = ansys_version
-        self._data_directory = data_directory
+
+    @property
+    def session(self):
+        return self._session
+
+    @session.setter
+    def session(self, session):
+        self._session = session
 
     def _dsg_export_docker(self):
-        if not self._ansys_version:
-            raise RuntimeError("Ansys version required to run command line")
-        docker_status_file = os.path.basename(self._status_filename)
-        env_vars = {
-            "ANSYS_OV_SERVER_STATUS_FILENAME" : f"/data/{docker_status_file}"
-        }
-        result = self._container.exec_run(self._docker_command_line_export(), environment=env_vars)
+        """Utility function to export data from a docker container for EnSight.
+        
+        To be used only in testing environment. Please note, that the way
+        it is designed, it will wait for the export to finish, 
+        differently from the local install case.
+        """
+        result = self._session._launcher._container.exec_run(
+            self._docker_command_line_export(),
+            environment={
+                "ANSYS_OV_SERVER_STATUS_FILENAME": f"/home/ensight/{self._status_filename}"
+            },
+        )
         if result.exit_code != 0:
-            self.warning(f"Error during DSG export from docker container {result.output.decode('utf-8')}")
-    
+            output = result.output.decode("utf-8")
+            self.warning(f"Error during DSG export from docker container {output}")
+
     def _dsg_export_local(self):
         if self._interpreter is None:
             self.warning("Unable to determine a kit executable pathname.")
@@ -433,12 +438,18 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         EnSight scene to the supplied directory in USD format.
         """
         self._new_status_file()
-        if self._container:
+        if self._session:
             self._dsg_export_docker()
         else:
             self._dsg_export_local()
         self._new_status_file(new=False)
-    
+        # For the container case, we need to copy the data generated locally to the
+        # dest folder
+        if self._session:
+            dest = os.path.dirname(self.destination)
+            location = f"file:///{dest}"
+            self._session.copy_from_session(location, ["/home/ensight/dsg_export/"])
+
     def _new_status_file(self, new=True) -> None:
         """
         Remove any existing status file and create a new one if requested.
@@ -449,21 +460,23 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             If True, create a new status file.
         """
         if self._status_filename:
-            if os.path.exists(self._status_filename):
-                try:
-                    os.remove(self._status_filename)
-                except OSError:
-                    self.warning(f"Unable to delete the status file: {self._status_filename}")
+            if self._session:
+                self._session._launcher._enshell.start_other(f"rm -rf {self._status_filename}")
+            else:
+                if os.path.exists(self._status_filename):
+                    try:
+                        os.remove(self._status_filename)
+                    except OSError:
+                        self.warning(f"Unable to delete the status file: {self._status_filename}")
         self._status_filename = ""
         if new:
-            base_dir = None
-            if self._container:
-                base_dir = self._data_directory
+            if self._session:
+                # In case of docker, create a status file local to the container
+                self._status_filename = f"/home/ensight/{uuid.uuid1()}_gs_status.txt"
             else:
-                base_dir = tempfile.gettempdir()
-            self._status_filename = os.path.join(
-                base_dir, str(uuid.uuid1()) + "_gs_status.txt"
-            )
+                self._status_filename = os.path.join(
+                    tempfile.gettempdir(), str(uuid.uuid1()) + "_gs_status.txt"
+                )
 
     def read_status_file(self) -> dict:
         """Read the status file and return its contents as a dictionary.
@@ -478,6 +491,15 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         """
         if not self._status_filename:
             return {}
+        if self._session:
+            result = self._session._launcher._enshell.start_other(f"cat {self._status_filename}")
+            if result[0] != 0:
+                self.warning("Couldn't retrieve status file from container")
+                return {}
+            try:
+                return json.loads(result[1])
+            except Exception:
+                return {}
         try:
             with open(self._status_filename, "r") as status_file:
                 data = json.load(status_file)
