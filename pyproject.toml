@@ -29,7 +29,44 @@ tests = [
     "omniverse_kit~=106.0.0",
     "pytest==8.3.2",
     "pytest-mock==3.10.0",
+    "pytest-cov==4.1.0",
 ]
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "exts/ansys.tools.omniverse.dsgui/ansys/tools/omniverse/dsgui/extension.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if selfdebug",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "@(abc.)?abstractmethod",
+    "if TYPE_CHECKING:",
+    "def _repr_pretty_",
+    "self._pim_instance",
+    "self._pim_file_service",
+    "def _launch_ensight_with_pim"]
+
+[tool.pytest.ini_options]
+minversion = "7.1"
+testpaths = [
+    "tests",
+]
+addopts = "--setup-show --cov=ansys.tools.omniverse --cov-report html:coverage-html --cov-report term --cov-config=.coveragerc --capture=tee-sys --tb=native -p no:warnings"
+markers =[
+    "integration:Run integration tests",
+    "smoke:Run the smoke tests",
+    "unit:Run the unit tests",
+    ]
+norecursedirs = ".git .idea"
+filterwarnings = "ignore:.+:DeprecationWarning"
 
 [tool.pip]
 extra-index-url = "https://pypi.nvidia.com/"
