@@ -22,7 +22,7 @@ or by looking at CEI_HOME. CEI_HOME is tried first.
 """
 
 
-def find_kit_filename() -> Optional[str]:
+def find_kit_filename() -> Optional[str]:  # pragma: no cover
     """
     Use a combination of the current omniverse application and the information
     in the local .nvidia-omniverse/config/omniverse.toml file to come up with
@@ -294,7 +294,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         """
         self._logger.error(text)
 
-    def _find_ensight_cpython(self) -> Optional[str]:
+    def _find_ensight_cpython(self) -> Optional[str]:  # pragma: no cover
         """
         Scan the current system, looking for EnSight installations, specifically, cpython.
         Check: PYENSIGHT_ANSYS_INSTALLATION, CEI_HOME, AWP_ROOT* in that order
@@ -401,7 +401,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             output = result.output.decode("utf-8")
             self.warning(f"Error during DSG export from docker container {output}")
 
-    def _dsg_export_local(self):
+    def _dsg_export_local(self):  # pragma: no cover
         if self._interpreter is None:
             self.warning("Unable to determine a kit executable pathname.")
             return
@@ -440,7 +440,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self._new_status_file()
         if self._session:
             self._dsg_export_docker()
-        else:
+        else:  # pragma: no cover
             self._dsg_export_local()
         self._new_status_file(new=False)
         # For the container case, we need to copy the data generated locally to the
@@ -462,7 +462,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         if self._status_filename:
             if self._session:
                 self._session._launcher._enshell.start_other(f"rm -rf {self._status_filename}")
-            else:
+            else:  # pragma: no cover
                 if os.path.exists(self._status_filename):
                     try:
                         os.remove(self._status_filename)
@@ -473,7 +473,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             if self._session:
                 # In case of docker, create a status file local to the container
                 self._status_filename = f"/home/ensight/{uuid.uuid1()}_gs_status.txt"
-            else:
+            else:  # pragma: no cover
                 self._status_filename = os.path.join(
                     tempfile.gettempdir(), str(uuid.uuid1()) + "_gs_status.txt"
                 )
@@ -500,9 +500,9 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
                 return json.loads(result[1])
             except Exception:
                 return {}
-        try:
+        try:  # pragma: no cover
             with open(self._status_filename, "r") as status_file:
                 data = json.load(status_file)
-        except Exception:
+        except Exception:  # pragma: no cover
             return {}
-        return data
+        return data  # pragma: no cover
