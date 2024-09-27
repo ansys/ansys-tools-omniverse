@@ -2,6 +2,75 @@
 requires = ["setuptools >= 42.0.0", "wheel"]
 build-backend = "setuptools.build_meta:__legacy__"
 
+[project]
+name = "ansys-tools-omniverse"
+version = "1.0.0"
+description = "A kit extension to send data from Ansys products into Omniverse"
+readme = "README.rst"
+requires-python = "==3.10"
+license = {file = "LICENSE"}
+authors = [{name = "ANSYS, Inc.", email = "pyansys.core@ansys.com"}]
+maintainers = [{name = "ANSYS, Inc.", email = "pyansys.core@ansys.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+tests = [
+    "ansys-pyensight-core~=0.8.11",
+    "omniverse_kit~=106.0.0",
+    "pytest==8.3.2",
+    "pytest-mock==3.10.0",
+    "pytest-cov==4.1.0",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "exts/ansys.tools.omniverse.dsgui/ansys/tools/omniverse/dsgui/extension.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if selfdebug",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "@(abc.)?abstractmethod",
+    "if TYPE_CHECKING:",
+    "def _repr_pretty_",
+    "self._pim_instance",
+    "self._pim_file_service",
+    "def _launch_ensight_with_pim"]
+
+[tool.pytest.ini_options]
+minversion = "7.1"
+testpaths = [
+    "tests",
+]
+addopts = "--setup-show --cov=ansys.tools.omniverse --cov-report html:coverage-html --cov-report term --cov-config=.coveragerc --capture=tee-sys --tb=native -p no:warnings"
+markers =[
+    "integration:Run integration tests",
+    "smoke:Run the smoke tests",
+    "unit:Run the unit tests",
+    ]
+norecursedirs = ".git .idea"
+filterwarnings = "ignore:.+:DeprecationWarning"
+
+[tool.pip]
+extra-index-url = "https://pypi.nvidia.com/"
+
 [tool.black]
 line-length = 100
 src_paths = ["doc", "exts"]

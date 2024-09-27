@@ -12,7 +12,7 @@ import setuptools.command.sdist
 
 # Get the long description from the README file
 HERE = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(HERE, "README.md"), encoding="utf-8") as f:
+with open(os.path.join(HERE, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 with open(
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         long_description_content_type="text/markdown",
         url=f"https://github.com/ansys-internal/{package_name}",
         license="MIT",
-        python_requires=">=3.9",
+        python_requires="~=3.10",
         package_dir={"": "src"},
         packages=_packages,
         cmdclass={"build_py": CustomBuildPy},
