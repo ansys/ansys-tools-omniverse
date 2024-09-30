@@ -37,10 +37,10 @@ The Ansys Tools Omniverse extension is designed to let you interact
 with Ansys applications via Omniverse, in order to display and post-process
 results from Ansys simulations in the Omniverse environment.
 
-The first product supported is Ansys EnSight_, a full-featured postprocessor 
-and general-purpose data visualization tool, that is capable of handling large simulation 
+The first product supported is Ansys EnSight_, a full-featured postprocessor
+and general-purpose data visualization tool, that is capable of handling large simulation
 datasets from a variety of physics and engineering disciplines.
-It makes use of PyEnSight_, part of the PyAnsys_ ecosystem. PyEnSight is a Python module that 
+It makes use of PyEnSight_, part of the PyAnsys_ ecosystem. PyEnSight is a Python module that
 provides the ability to launch and control an EnSight instance from an external or remote
 Python instance.
 
