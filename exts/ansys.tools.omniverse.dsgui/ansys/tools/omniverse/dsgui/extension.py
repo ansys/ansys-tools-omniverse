@@ -1,3 +1,25 @@
+# Copyright (C) 2024 ANSYS, Inc. and/or its affiliates.
+# SPDX-License-Identifier: MIT
+#
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import logging
 import threading
 import time
@@ -17,6 +39,7 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self._grpc = None
         self._dsg_uri_w = None
         self._dsg_token_w = None
+        self._interpreter_w = None
         self._destination_w = None
         self._temporal_w = None
         self._vrmode_w = None
@@ -25,6 +48,7 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self._connect_w = None
         self._update_w = None
         self._connected = False
+        self._error_msg = ""
 
     @property
     def service(self) -> Optional["AnsysToolsOmniverseDSGUIExtension"]:
@@ -44,6 +68,7 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
             return
         self.service.dsg_uri = self._dsg_uri_w.model.as_string
         self.service.security_token = self._dsg_token_w.model.as_string
+        self.service.interpreter = self._interpreter_w.model.as_string
         self.service.destination = self._destination_w.model.as_string
         self.service.temporal = self._temporal_w.model.as_bool
         self.service.vrmode = self._vrmode_w.model.as_bool
@@ -68,7 +93,12 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         if self._connected:
             self.stop_server()
         else:
-            self.start_server()
+            pypath = self._interpreter_w.model.as_string
+            if not self.service.validate_interpreter(pypath):
+                self._error_msg = ".  Invalid Python path."
+            else:
+                self._error_msg = ""
+                self.start_server()
         self.update_ui()
 
     def update_cb(self) -> None:
@@ -104,7 +134,7 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
             self._label_w.text = tmp
         else:
             self._connect_w.text = "Connect to DSG Server"
-            self._label_w.text = "No connected DSG server"
+            self._label_w.text = "No connected DSG server" + self._error_msg
         self._update_w.enabled = self._connected and (status.get("status", "idle") == "idle")
         self._connect_w.enabled = status.get("status", "idle") == "idle"
         self._temporal_w.enabled = True
@@ -113,13 +143,14 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self._time_scale_w.enabled = not self._connected
         self._dsg_uri_w.enabled = not self._connected
         self._dsg_token_w.enabled = not self._connected
+        self._interpreter_w.enabled = not self._connected
         self._destination_w.enabled = not self._connected
 
     def build_ui(self) -> None:
         self._window = ui.Window(f"ANSYS Tools Omniverse DSG ({self.service.version})")
         with self._window.frame:
             with ui.VStack(height=0, spacing=5):
-                self._label_w = ui.Label("No connected DSG server")
+                self._label_w = ui.Label("No connected DSG server" + self._error_msg)
 
                 with ui.HStack(spacing=5):
                     ui.Label(
@@ -141,7 +172,16 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
 
                 with ui.HStack(spacing=5):
                     ui.Label(
-                        "Omniverse URI:",
+                        "Python path:",
+                        alignment=ui.Alignment.RIGHT_CENTER,
+                        width=0,
+                    )
+                    self._interpreter_w = ui.StringField()
+                    self._interpreter_w.model.as_string = str(self.service.interpreter)
+
+                with ui.HStack(spacing=5):
+                    ui.Label(
+                        "Export directory:",
                         alignment=ui.Alignment.RIGHT_CENTER,
                         width=0,
                     )
@@ -184,6 +224,7 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self._label_w = None
         self._dsg_uri_w = None
         self._dsg_token_w = None
+        self._interpreter_w = None
         self._destination_w = None
         self._temporal_w = None
         self._vrmode_w = None
