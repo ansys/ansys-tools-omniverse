@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""Ansys Tools Omniverse DSG UI Extension Module."""  # numpydoc ignore=EX01,SA01,ES01
+
 import logging
 import threading
 import time
@@ -30,8 +32,16 @@ import omni.ext
 import omni.ui as ui
 
 
-class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
-    def __init__(self, *args, **kwargs) -> None:
+class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):  # numpydoc ignore=PR01,SA01,EX01
+    """
+    AnsysToolsOmniverseDSGUIExtension extension class.
+
+    This class is an Omniverse kit.  The kit is a GUI tool
+    that wraps the AnsysToolsOmniverseCoreServerExtension functionalities
+    and presents them to the user.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:  # numpydoc ignore=GL08
         super().__init__(*args, **kwargs)
         self._window: Any = None
         self._label_w: Any = None
@@ -51,19 +61,22 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self._error_msg = ""
 
     @property
-    def service(self) -> Optional["AnsysToolsOmniverseDSGUIExtension"]:
+    def service(self) -> Optional["AnsysToolsOmniverseDSGUIExtension"]:  # numpydoc ignore=GL08
         return ansys.tools.omniverse.core.AnsysToolsOmniverseCoreServerExtension.get_instance()
 
-    def info(self, text: str) -> None:
+    def info(self, text: str) -> None:  # numpydoc ignore=GL08
         self._logger.info(text)
 
-    def warning(self, text: str) -> None:
+    def warning(self, text: str) -> None:  # numpydoc ignore=GL08
         self._logger.warning(text)
 
-    def error(self, text: str) -> None:
+    def error(self, text: str) -> None:  # numpydoc ignore=GL08
         self._logger.error(text)
 
-    def start_server(self) -> None:
+    def start_server(self) -> None:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """
+        Start tge Ansys Tools Omniverse Core service.
+        """
         if self._connected:
             return
         self.service.dsg_uri = self._dsg_uri_w.model.as_string
@@ -80,13 +93,16 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self.info("Connected to DSG service")
         self._connected = True
 
-    def stop_server(self) -> None:
+    def stop_server(self) -> None:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """
+        Stop the Ansys Tools Omniverse Core service.
+        """
         if not self._connected:
             return
         self.info("Disconnect from DSG service")
         self._connected = False
 
-    def connect_cb(self) -> None:
+    def connect_cb(self) -> None:  # numpydoc ignore=GL08
         if self.service is None:
             self.error("Unable to find ansys.tools.omniverse.core instance")
             return
@@ -101,24 +117,27 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
                 self.start_server()
         self.update_ui()
 
-    def update_cb(self) -> None:
+    def update_cb(self) -> None:  # numpydoc ignore=GL08
         if not self._connected:
             self.error("No DSG service connected")
             return
         self.service.dsg_export()
 
-    def on_startup(self, ext_id: str) -> None:
+    def on_startup(self, ext_id: str) -> None:  # numpydoc ignore=GL08
         self.info(f"ANSYS tools omniverse DSG GUI startup: {ext_id}")
         if self.service is None:
             self.error("Unable to find ansys.tools.omniverse.core instance")
         self.build_ui()
         self._update_callback()
 
-    def _update_callback(self) -> None:
+    def _update_callback(self) -> None:  # numpydoc ignore=GL08
         self.update_ui()
         threading.Timer(0.5, self._update_callback).start()
 
-    def update_ui(self) -> None:
+    def update_ui(self) -> None:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """
+        Update the UI depending on the export status.
+        """
         status = self.service.read_status_file()
         if self._connected:
             self._connect_w.text = "Disconnect from DSG Server"
@@ -146,7 +165,10 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
         self._interpreter_w.enabled = not self._connected
         self._destination_w.enabled = not self._connected
 
-    def build_ui(self) -> None:
+    def build_ui(self) -> None:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """
+        Build the extension UI.
+        """
         self._window = ui.Window(f"ANSYS Tools Omniverse DSG ({self.service.version})")
         with self._window.frame:
             with ui.VStack(height=0, spacing=5):
@@ -217,7 +239,7 @@ class AnsysToolsOmniverseDSGUIExtension(omni.ext.IExt):
                     self._connect_w = ui.Button("Connect to DSG Server", clicked_fn=self.connect_cb)
                     self._update_w = ui.Button("Request Update", clicked_fn=self.update_cb)
 
-    def on_shutdown(self) -> None:
+    def on_shutdown(self) -> None:  # numpydoc ignore=GL08
         self.info("ANSYS Tools Omniverse DSG shutdown")
         self.stop_server()
         self._window = None
