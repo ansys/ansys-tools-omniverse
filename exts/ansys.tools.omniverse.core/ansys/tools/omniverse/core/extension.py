@@ -55,7 +55,7 @@ def find_kit_filename() -> Optional[str]:  # numpydoc ignore=SA01,EX01
 
     Returns
     -------
-    (string):
+    str
         The pathname of a kit executable or None.
     """
     # get the current application
