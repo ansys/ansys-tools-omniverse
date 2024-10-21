@@ -55,7 +55,7 @@ The kit extension will find the most recent Ansys install and use the
 version of the pyensight found in the install to perform export
 operations.
 
-.. image:: /_static/omniverse_extension.png
+.. image:: https://ensight.docs.pyansys.com/version/stable/_images/omniverse_extension.png
 
 The ``ansys.tools.omniverse.dsgui`` kit includes a GUI similar to the
 EnSight 2025 R1 user-defined tool.  It allows one to select a

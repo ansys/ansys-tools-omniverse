@@ -37,6 +37,7 @@ jobs:
       - uses: ansys/actions/doc-style@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          files: "exts"
   tests:
     name: "Test ${{ matrix.python-version }} with ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}

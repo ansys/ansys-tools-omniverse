@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""Ansys Tools Omniverse Core Extension Module."""  # numpydoc ignore=EX01,SA01,ES01
+
 import json
 import logging
 import os
@@ -42,8 +44,10 @@ or by looking at CEI_HOME. CEI_HOME is tried first.
 """
 
 
-def find_kit_filename() -> Optional[str]:
+def find_kit_filename() -> Optional[str]:  # numpydoc ignore=SA01,EX01
     """
+    Find the location of the Kit executable.
+
     Use a combination of the current omniverse application and the information
     in the local .nvidia-omniverse/config/omniverse.toml file to come up with
     the pathname of a kit executable suitable for hosting another copy of the
@@ -51,8 +55,8 @@ def find_kit_filename() -> Optional[str]:
 
     Returns
     -------
-        The pathname of a kit executable or None
-
+    str
+        The pathname of a kit executable or None.
     """
     # get the current application
     app = omni.kit.app.get_app()
@@ -88,8 +92,10 @@ def find_kit_filename() -> Optional[str]:
     return None
 
 
-class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
+class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):  # numpydoc ignore=PR01,SA01,EX01
     """
+    AnsysToolsOmniverseCoreServerExtension extension class.
+
     This class is an Omniverse kit.  The kit is capable of creating a
     connection to an Ansys Distributed Scene Graph service and pushing
     the graph into an Omniverse Nucleus.
@@ -97,7 +103,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
 
     _service_instance = None
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:  # numpydoc ignore=GL08
         super().__init__(*args, **kwargs)
         ext_name = __name__.rsplit(".", 1)[0]
         self._logger = logging.getLogger(ext_name)
@@ -122,103 +128,107 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self._interpreter = self._find_ensight_cpython()
 
     @property
-    def version(self) -> str:
+    def version(self) -> str:  # numpydoc ignore=GL08
         return self._version
 
     @property
-    def dsg_uri(self) -> str:
-        """The endpoint of a Dynamic Scene Graph service:  grpc://{hostname}:{port}"""
+    def dsg_uri(self) -> str:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """The endpoint of a Dynamic Scene Graph service:  grpc://{hostname}:{port}."""
         return self._dsg_uri
 
     @dsg_uri.setter
-    def dsg_uri(self, uri: str) -> None:
+    def dsg_uri(self, uri: str) -> None:  # numpydoc ignore=GL08
         self._dsg_uri = uri
 
     @property
-    def destination(self) -> str:
-        """The output USD directory name"""
+    def destination(self) -> str:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """The output USD directory name."""
         return self._omni_uri
 
     @destination.setter
-    def destination(self, value: str) -> None:
+    def destination(self, value: str) -> None:  # numpydoc ignore=GL08
         self._omni_uri = value
 
     @property
-    def security_token(self) -> str:
+    def security_token(self) -> str:  # numpydoc ignore=ES01,RT01,SA01,EX01
         """The security token of the DSG service instance."""
         return self._security_token
 
     @security_token.setter
-    def security_token(self, value: str) -> None:
+    def security_token(self, value: str) -> None:  # numpydoc ignore=GL08
         self._security_token = value
 
     @property
-    def temporal(self) -> bool:
+    def temporal(self) -> bool:  # numpydoc ignore=ES01,RT01,SA01,EX01
         """If True, the DSG update should include all timesteps."""
         return self._temporal
 
     @temporal.setter
-    def temporal(self, value: bool) -> None:
+    def temporal(self, value: bool) -> None:  # numpydoc ignore=GL08
         self._temporal = bool(value)
 
     @property
-    def vrmode(self) -> bool:
+    def vrmode(self) -> bool:  # numpydoc ignore=ES01,RT01,SA01,EX01
         """If True, the DSG update should not include camera transforms."""
         return self._vrmode
 
     @vrmode.setter
-    def vrmode(self, value: bool) -> None:
+    def vrmode(self, value: bool) -> None:  # numpydoc ignore=GL08
         self._vrmode = bool(value)
 
     @property
-    def normalize_geometry(self) -> bool:
+    def normalize_geometry(self) -> bool:  # numpydoc ignore=ES01,RT01,SA01,EX01
         """If True, the DSG geometry should be remapped into normalized space."""
         return self._normalize_geometry
 
     @normalize_geometry.setter
-    def normalize_geometry(self, val: bool) -> None:
+    def normalize_geometry(self, val: bool) -> None:  # numpydoc ignore=GL08
         self._normalize_geometry = val
 
     @property
-    def time_scale(self) -> float:
-        """Value to multiply DSG time values by before passing to Omniverse"""
+    def time_scale(self) -> float:  # numpydoc ignore=ES01,RT01,SA01,EX01
+        """Value to multiply DSG time values by before passing to Omniverse."""
         return self._time_scale
 
     @time_scale.setter
-    def time_scale(self, value: float) -> None:
+    def time_scale(self, value: float) -> None:  # numpydoc ignore=GL08
         self._time_scale = value
 
     @property
-    def interpreter(self) -> str:
+    def interpreter(self) -> str:  # numpydoc ignore=ES01,RT01,SA01,EX01
         """Fully qualified path to the python.exe or .bat wrapper in which pyensight is installed."""
         return self._interpreter
 
     @interpreter.setter
-    def interpreter(self, value: str) -> None:
+    def interpreter(self, value: str) -> None:  # numpydoc ignore=GL08
         self._interpreter = value
 
     @classmethod
-    def get_instance(cls) -> Optional["AnsysToolsOmniverseCoreServerExtension"]:
+    def get_instance(
+        cls,
+    ) -> Optional["AnsysToolsOmniverseCoreServerExtension"]:  # numpydoc ignore=GL08
         return cls._service_instance
 
     @classmethod
-    def _setting(cls, name: str, env_varname: str = "") -> str:
+    def _setting(cls, name: str, env_varname: str = "") -> str:  # numpydoc ignore=SA01,EX01
         """
-        Get a CLI option value. First check if any specified
-        environment variable is present and if so, return that value.
+        Get a CLI option value.
+
+        First check if any specified environment variable is present and if so, return that value.
         Next, check to see if a command line value is set and return
         that.  Finally, fall back to the value (if any) specified in
         the kit toml file.
 
         Parameters
         ----------
-        name
+        name : str
             The name of the command line flag to check the value of.
-        env_varname
+        env_varname : str
             Optional name of the environment variable to check the value of.
 
         Returns
         -------
+        str
             A string or None.
         """
         # any environmental variable trumps them all.
@@ -231,48 +241,49 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         s = f"/exts/{ext_name}/{name}"
         return settings.get(s)
 
-    def info(self, text: str) -> None:
+    def info(self, text: str) -> None:  # numpydoc ignore=ES01,SA01,EX01
         """
         Send message to the logger at the info level.
 
         Parameters
         ----------
-        text
+        text : str
             The message to send.
         """
         self._logger.info(text)
 
-    def warning(self, text: str) -> None:
+    def warning(self, text: str) -> None:  # numpydoc ignore=ES01,SA01,EX01
         """
         Send message to the logger at the warning level.
 
         Parameters
         ----------
-        text
+        text : str
             The message to send.
         """
         self._logger.warning(text)
 
-    def error(self, text: str) -> None:
+    def error(self, text: str) -> None:  # numpydoc ignore=ES01,SA01,EX01
         """
         Send message to the logger at the error level.
 
         Parameters
         ----------
-        text
+        text : str
             The message to send.
         """
         self._logger.error(text)
 
-    def _find_ensight_cpython(self) -> Optional[str]:
+    def _find_ensight_cpython(self) -> Optional[str]:  # numpydoc ignore=SA01,EX01
         """
         Scan the current system, looking for EnSight installations, specifically, cpython.
+
         Check: PYENSIGHT_ANSYS_INSTALLATION, CEI_HOME, AWP_ROOT* in that order
 
         Returns
         -------
-            The first cpython found or None
-
+        str
+            The first cpython found or None.
         """
 
         cpython = "cpython"
@@ -305,20 +316,20 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
                     return launch_file
         return ""
 
-    def on_startup(self, ext_id: str) -> None:
+    def on_startup(self, ext_id: str) -> None:  # numpydoc ignore=ES01,SA01,EX01
         """
         Called by Omniverse when the kit instance is started.
 
         Parameters
         ----------
-        ext_id
+        ext_id : str
             The specific version of the kit.
         """
         self._version = ext_id.split("-")[-1]
         self.info(f"ANSYS tools omniverse core server startup: {self._version}")
         AnsysToolsOmniverseCoreServerExtension._service_instance = self
 
-    def on_shutdown(self) -> None:
+    def on_shutdown(self) -> None:  # numpydoc ignore=ES01,SA01,EX01
         """
         Called by Omniverse when the kit instance is shutting down.
         """
@@ -326,7 +337,20 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
         self.shutdown()
         AnsysToolsOmniverseCoreServerExtension._service_instance = None
 
-    def validate_interpreter(self, launch_file: str) -> bool:
+    def validate_interpreter(self, launch_file: str) -> bool:  # numpydoc ignore=ES01,SA01,EX01
+        """
+        Validate the input interpreter.
+
+        Parameters
+        ----------
+        launch_file : str
+            The interpreter location.
+
+        Returns
+        -------
+        bool
+            True if the interpreter correctly has installed the omniverse cli tool.
+        """
         if len(launch_file) == 0:
             return False
         has_ov_module = False
@@ -341,8 +365,10 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             has_ov_module = False
         return has_ov_module
 
-    def dsg_export(self) -> None:
+    def dsg_export(self) -> None:  # numpydoc ignore=SA01,EX01
         """
+        Export the current scene in USD format.
+
         Use the oneshot feature of the pyensight omniverse_cli to push the current
         EnSight scene to the supplied directory in USD format.
         """
@@ -378,7 +404,7 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
             self.warning(f"Error running translator: {error}")
         self._new_status_file(new=False)
 
-    def _new_status_file(self, new=True) -> None:
+    def _new_status_file(self, new=True) -> None:  # numpydoc ignore=ES01,SA01,EX01
         """
         Remove any existing status file and create a new one if requested.
 
@@ -399,16 +425,17 @@ class AnsysToolsOmniverseCoreServerExtension(omni.ext.IExt):
                 tempfile.gettempdir(), str(uuid.uuid1()) + "_gs_status.txt"
             )
 
-    def read_status_file(self) -> dict:
-        """Read the status file and return its contents as a dictionary.
+    def read_status_file(self) -> dict:  # numpydoc ignore=ES01,SA01,EX01
+        """
+        Read the status file and return its contents as a dictionary.
 
         Note: this can fail if the file is being written to when this call is made, so expect
         failures.
 
         Returns
         -------
-        Optional[dict]
-            A dictionary with the fields 'status', 'start_time', 'processed_buffers', 'total_buffers' or empty
+        dict
+            A dictionary with the fields 'status', 'start_time', 'processed_buffers', 'total_buffers' or empty.
         """
         if not self._status_filename:
             return {}
