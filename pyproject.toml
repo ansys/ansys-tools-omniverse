@@ -22,7 +22,7 @@ tests = [
     "omniverse_kit~=106.0.0",
     "pytest==8.3.2",
     "pytest-mock==3.10.0",
-    "pytest-cov==4.1.0",
+    "pytest-cov==6.0.0",
 ]
 
 [tool.coverage.run]
