@@ -21,8 +21,8 @@ Ansys Tools Omniverse
     :target: https://github.com/PyCQA/bandit
     :alt: Security Status
 
-.. |ci| image:: https://github.com/ansys-internal/ansys-tools-omniverse/actions/workflows/ci.yml/badge.svg?branch=main
-   :target: https://github.com/ansys-internal/ansys-tools-omniverse/actions?query=branch%3Amain
+.. |ci| image:: https://github.com/ansys/ansys-tools-omniverse/actions/workflows/ci.yml/badge.svg?branch=main
+   :target: https://github.com/ansys/ansys-tools-omniverse/actions?query=branch%3Amain
 
 .. _PyEnSight: https://ensight.docs.pyansys.com/version/stable/
 
