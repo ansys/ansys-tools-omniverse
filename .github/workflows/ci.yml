@@ -77,6 +77,11 @@ jobs:
         with:
           library-name: ${{ env.PACKAGE_NAME }}
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
+      - name: Remove Dummy Wheel
+        run: |
+          python post_build_cleanup.py
+
+
 
   release:
     name: Release
@@ -88,3 +93,4 @@ jobs:
         uses: ansys/actions/release-github@v8
         with:
           library-name: ${{ env.PACKAGE_NAME }}
+          only-code: true
