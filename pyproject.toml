@@ -1,6 +1,6 @@
 [project]
 name = "ansys-tools-omniverse"
-version = "1.0.0"
+version = "1.0.0.dev0"
 description = "A kit extension to send data from Ansys products into Omniverse"
 readme = "README.rst"
 requires-python = ">=3.10,<3.11"
