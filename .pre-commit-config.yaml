@@ -20,7 +20,7 @@ repos:
       - id: numpydoc-validation
         exclude: |
           (?x)(
-              tests/ | __init__.py
+              tests/ | __init__.py | post_build_cleanup.py | setup.py
           )
 
   - repo: https://github.com/codespell-project/codespell
