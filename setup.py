@@ -16,7 +16,7 @@ class CustomSdist(_sdist):
         self.filelist.files = [
             f
             for f in self.filelist.files
-            if f.startswith("exts") or f in ["setup.py", "pyproject.toml"]
+            if f.startswith("exts") or f in ["setup.py", "pyproject.toml", "README.rst"]
         ]
         for root, dirs, files in os.walk("exts"):
             for file in files:
