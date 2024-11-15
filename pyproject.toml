@@ -22,7 +22,7 @@ classifiers = [
 
 [project.optional-dependencies]
 tests = [
-    "ansys-pyensight-core~=0.8.11",
+    "ansys-pyensight-core~=0.9.1",
     "omniverse_kit~=106.0.0",
     "pytest==8.3.2",
     "pytest-mock==3.10.0",
