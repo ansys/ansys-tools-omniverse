@@ -24,7 +24,7 @@ classifiers = [
 tests = [
     "ansys-pyensight-core~=0.8.11",
     "omniverse_kit~=106.0.0",
-    "pytest==8.3.2",
+    "pytest==8.3.4",
     "pytest-mock==3.10.0",
     "pytest-cov==4.1.0",
 ]
